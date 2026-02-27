@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 class HealthProfile {
   final String name;
   final int age;
-  final String gender; 
+  final String gender;
   final double height; // in cm
   final double weight; // in kg
   final List<String>? allergies; // Optional, for future use
@@ -268,11 +268,20 @@ class FirestoreService {
 
   // Check if user has completed health profile
   Future<bool> hasCompletedHealthProfile() async {
-    if (_userId == null) return false;
+    debugPrint('Checking health profile for user: $_userId');
+
+    if (_userId == null) {
+      debugPrint('No user ID available');
+      return false;
+    }
 
     try {
       final doc = await _firestore.collection('users').doc(_userId).get();
-      return doc.exists && doc.data()?['healthProfile'] != null;
+      final hasProfile = doc.exists && doc.data()?['healthProfile'] != null;
+      debugPrint(
+        'Health profile exists: $hasProfile (doc.exists: ${doc.exists})',
+      );
+      return hasProfile;
     } catch (e) {
       debugPrint('Error checking health profile: $e');
       return false;
@@ -371,5 +380,3 @@ class FirestoreService {
     }
   }
 }
-
-

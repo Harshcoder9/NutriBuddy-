@@ -20,11 +20,16 @@ class _SignInScreenState extends State<SignInScreen> {
     });
 
     try {
+      debugPrint('Starting Google Sign-In...');
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
+        debugPrint('Google Sign-In successful: ${userCredential.user?.email}');
         // Navigation handled by auth state listener in main.dart
+      } else {
+        debugPrint('Google Sign-In cancelled by user');
       }
     } catch (e) {
+      debugPrint('Google Sign-In error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -48,9 +53,12 @@ class _SignInScreenState extends State<SignInScreen> {
     });
 
     try {
-      await _authService.signInAnonymously();
+      debugPrint('Starting Anonymous Sign-In...');
+      final result = await _authService.signInAnonymously();
+      debugPrint('Anonymous Sign-In successful: ${result.user?.uid}');
       // Navigation handled by auth state listener in main.dart
     } catch (e) {
+      debugPrint('Anonymous Sign-In error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

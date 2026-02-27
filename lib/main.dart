@@ -6,6 +6,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 import 'challenges_screen.dart';
 import 'services/firestore_service.dart';
 import 'services/nutrition_calculator.dart';
@@ -14,11 +15,11 @@ import 'screens/settings_screen.dart';
 import 'screens/health_profile_screen.dart';
 
 // ─────────────────────────────────────────────
-// 🔑  REPLACE THIS WITH YOUR REAL GEMINI API KEY
+// 🔑  GEMINI API KEY
 // Get one free at: https://aistudio.google.com/app/apikey
-// Leave it as-is to run in safe demo mode (simulated responses, no real calls)
+// Leave it as 'YOUR_GEMINI_API_KEY_HERE' to run in safe demo mode (simulated responses)
 const _kGeminiApiKey = 'AIzaSyAXhrLsVLjRwx3Qe57lcKWKzBy_g2rwKsk';
-const _kDemoMode = _kGeminiApiKey == 'AIzaSyCyt2MscCvBPpHG1YLUFV4Av4DKDsu88ag';
+const _kDemoMode = _kGeminiApiKey == 'YOUR_GEMINI_API_KEY_HERE';
 // ─────────────────────────────────────────────
 
 // Challenge model class
@@ -83,15 +84,9 @@ void main() async {
   // Initialize Firebase
   try {
     await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: 'AIzaSyD-4aQeMTxdHpcKS0mzhSz0gkS_iVIbejk',
-        authDomain: 'nutribuddy-4e3b7.firebaseapp.com',
-        projectId: 'nutribuddy-4e3b7',
-        storageBucket: 'nutribuddy-4e3b7.firebasestorage.app',
-        messagingSenderId: '328896889583',
-        appId: '1:328896889583:web:8290c9555b75d0d8d0511a',
-      ),
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
     // Continue without Firebase for development
@@ -148,8 +143,13 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        debugPrint(
+          'AuthGate - Connection: ${snapshot.connectionState}, HasData: ${snapshot.hasData}',
+        );
+
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
+          debugPrint('AuthGate - Waiting for auth state...');
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
@@ -157,14 +157,24 @@ class AuthGate extends StatelessWidget {
 
         // Show sign-in screen if not authenticated
         if (!snapshot.hasData) {
+          debugPrint('AuthGate - No user data, showing SignInScreen');
           return const SignInScreen();
         }
+
+        debugPrint(
+          'AuthGate - User authenticated: ${snapshot.data?.email ?? snapshot.data?.uid}',
+        );
 
         // Check if user has completed health profile
         return FutureBuilder<bool>(
           future: FirestoreService().hasCompletedHealthProfile(),
           builder: (context, profileSnapshot) {
+            debugPrint(
+              'AuthGate - Profile check - Connection: ${profileSnapshot.connectionState}, Data: ${profileSnapshot.data}',
+            );
+
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              debugPrint('AuthGate - Checking health profile...');
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
@@ -172,9 +182,13 @@ class AuthGate extends StatelessWidget {
 
             // Show health profile screen if not completed
             if (profileSnapshot.data == false) {
-              return const HealthProfileScreen();
+              debugPrint(
+                'AuthGate - No health profile, showing HealthProfileScreen',
+              );
+              return const HealthProfileScreen(showBackButton: true);
             }
 
+            debugPrint('AuthGate - Health profile complete, showing HomePage');
             // Show home page if profile is completed
             return const HomePage();
           },
@@ -238,8 +252,10 @@ class _HomePageState extends State<HomePage> {
   final FirestoreService _firestoreService = FirestoreService();
   final List<ChatMessage> _messages = [];
   File? _selectedImage;
-  // null = not processing, non-null = loading message to display
-  String? _processingMessage;
+  // Separate states for image vs text processing
+  bool _isAnalyzingImage = false;
+  bool _isProcessingText = false;
+  String? _processingMessage; // Display message for user
   Map<String, dynamic>? _analysisResult;
   List<String> _selectedChallenges = [];
   // Conversation history for AI context (last 5 exchanges = 10 messages)
@@ -566,7 +582,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _sendTextMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
-    if (_processingMessage != null) return; // prevent spam while processing
+    if (_isProcessingText) return; // prevent duplicate text submissions
 
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
@@ -654,6 +670,7 @@ class _HomePageState extends State<HomePage> {
     if (_selectedImage == null) return;
 
     setState(() {
+      _isAnalyzingImage = true;
       _processingMessage = 'Analyzing your food...';
     });
 
@@ -667,7 +684,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
 
       // Fetch user's health profile for personalized recommendations
       final healthProfile = await _firestoreService.getHealthProfile();
@@ -696,23 +713,28 @@ IMPORTANT: Consider the user's age, gender, and BMI when providing recommendatio
       final imageBytes = await _selectedImage!.readAsBytes();
       final prompt =
           '''
-CRITICAL: First determine if this image contains actual FOOD or FOOD PACKAGING. 
-If the image contains:
-- Non-food items (electronics, screens, furniture, people, animals, etc.)
-- Text/code on screens
-- Empty plates/containers
-- Abstract images or scenes without identifiable food
+CRITICAL - FOOD DETECTION STEP:
+First, determine if this image contains ACTUAL FOOD, PREPARED MEALS, or FOOD PACKAGING with visible nutrition labels.
 
-Return this JSON immediately:
+REJECT and return error JSON if the image shows:
+- Non-food items: electronics, screens, furniture, vehicles, tools, documents
+- People, animals, pets (even if near food)
+- Empty plates, bowls, or containers
+- Landscapes, buildings, nature scenes
+- Text, code, or screenshots without food
+- Drinks only (unless nutritional beverage like protein shake)
+- Raw ingredients in isolation (unless specifically a meal prep context)
+
+If NOT food-related, return this JSON immediately:
 {
   "error": "not_food",
-  "message": "This doesn't appear to be food or a food product. Please take a photo of actual food, meal, or food packaging."
+  "message": "I can only analyze food and meals! 🍽️ Please take a photo of:\n• Prepared meals or dishes\n• Food packaging with nutrition labels\n• Snacks or beverages\n\nTip: Make sure the food is clearly visible and well-lit for best results."
 }
 
-ONLY if the image clearly shows ACTUAL FOOD OR FOOD PACKAGING, proceed to analyze it and provide nutritional information in JSON format.
+ONLY if the image clearly shows ACTUAL FOOD, MEALS, OR FOOD PACKAGING, proceed to analyze nutritional content and provide recommendations in JSON format.
 
 Include:
-1. Product name
+1. Product name (be specific - e.g., "Chicken Biryani" not just "rice dish")
 2. Nutritional values per serving (calories, protein, carbs, fat, sugar)
 3. Serving size
 4. Key ingredients (top 5)
@@ -769,6 +791,7 @@ Return ONLY valid JSON with this structure:
         // Check if it's an error (not food)
         if (result['error'] == 'not_food') {
           setState(() {
+            _isAnalyzingImage = false;
             _processingMessage = null;
             _messages.add(
               ChatMessage(
@@ -789,6 +812,7 @@ Return ONLY valid JSON with this structure:
           _analysisResult = result;
           _lastAnalyzedNutrition = result['nutrition'] as Map<String, dynamic>?;
           _lastAnalyzedProductName = result['productName'] as String?;
+          _isAnalyzingImage = false;
           _processingMessage = null;
 
           // Add AI response to chat
@@ -818,16 +842,36 @@ Return ONLY valid JSON with this structure:
       } else {
         throw Exception('Invalid response format');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('=== IMAGE ANALYSIS ERROR ===');
+      debugPrint('Error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      debugPrint('API Key starts with: ${_kGeminiApiKey.substring(0, 10)}...');
+
       setState(() {
+        _isAnalyzingImage = false;
         _processingMessage = null;
       });
-      // Show the actual error for debugging
-      final errorMsg = e.toString();
-      debugPrint('Analysis error: $errorMsg');
-      _showError(
-        'Analysis failed: ${errorMsg.length > 100 ? errorMsg.substring(0, 100) + "..." : errorMsg}',
-      );
+
+      String errorMessage = 'Analysis failed. ';
+      if (e.toString().contains('PERMISSION_DENIED') ||
+          e.toString().contains('API_KEY_INVALID')) {
+        errorMessage +=
+            'Invalid API key or permissions denied. Please check your Gemini API key and ensure "Generative Language API" is enabled in Google Cloud Console.';
+      } else if (e.toString().contains('RESOURCE_EXHAUSTED') ||
+          e.toString().contains('quota')) {
+        errorMessage +=
+            'API quota exceeded. Please check your Gemini API usage limits.';
+      } else if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection')) {
+        errorMessage +=
+            'Network connection failed. Please check your internet connection and try again.';
+      } else {
+        errorMessage += 'Error: ${e.toString().split('\n').first}';
+      }
+
+      _showError(errorMessage);
     }
   }
 
@@ -1034,8 +1078,9 @@ Return ONLY valid JSON with this structure:
       _messages.add(
         ChatMessage(
           text:
-              '⚠️ This is a simulated analysis based on your active goal. '
-              'Scan a real food photo with the AI enabled for accurate results.',
+              '⚠️ DEMO MODE: This analysis is simulated, NOT based on your actual photo. '
+              'The food name and nutrition shown are generic examples. '
+              'To get real AI-powered analysis of what you uploaded, please add a valid Gemini API key in main.dart.',
           isUser: false,
         ),
       );
@@ -1240,16 +1285,34 @@ Challenge History (last ${_challengeStats!.totalDaysTracked} days tracked):
     final foodName = foodText.isEmpty ? 'food' : foodText;
 
     setState(() {
+      _isProcessingText = true;
       _processingMessage = 'Estimating nutrition for $foodName...';
     });
 
-    final nutrition = _kDemoMode
-        ? _estimateDemoNutrition(foodName)
-        : await _estimateNutritionWithAI(foodName);
+    try {
+      final nutrition = _kDemoMode
+          ? _estimateDemoNutrition(foodName)
+          : await _estimateNutritionWithAI(foodName);
 
-    _lastAnalyzedNutrition = nutrition;
-    _lastAnalyzedProductName = foodName;
-    await _logConsumedMeal();
+      _lastAnalyzedNutrition = nutrition;
+      _lastAnalyzedProductName = foodName;
+      await _logConsumedMeal();
+    } catch (e) {
+      debugPrint('Error logging food: $e');
+      setState(() {
+        _messages.add(
+          ChatMessage(
+            text: 'Sorry, I had trouble logging that food. Please try again.',
+            isUser: false,
+          ),
+        );
+      });
+    } finally {
+      setState(() {
+        _isProcessingText = false;
+        _processingMessage = null;
+      });
+    }
   }
 
   /// Simple keyword-based nutrition estimator for demo mode.
@@ -1340,7 +1403,7 @@ Challenge History (last ${_challengeStats!.totalDaysTracked} days tracked):
   Future<Map<String, dynamic>> _estimateNutritionWithAI(String food) async {
     try {
       final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         apiKey: _kGeminiApiKey,
       );
       final response = await model.generateContent([
@@ -1450,6 +1513,7 @@ Challenge History (last ${_challengeStats!.totalDaysTracked} days tracked):
   /// Main conversational AI handler for text questions.
   Future<void> _processTextQuery(String text) async {
     setState(() {
+      _isProcessingText = true;
       _processingMessage = 'Thinking...';
     });
 
@@ -1484,12 +1548,30 @@ You are NutriBuddy, a knowledgeable and friendly nutrition AI assistant. You ONL
 $userContext
 $circadian
 $historyStr
+
+WHEN USER ASKS ABOUT SPECIFIC FOODS (e.g., "tell me about pav bhaji", "is pizza healthy?", "what about chicken salad?"):
+1. **Nutritional Overview**: Provide typical nutrition per serving (calories, protein, carbs, fat, sugar, fiber, key vitamins/minerals)
+2. **Ingredients Analysis**: Briefly explain main ingredients and their health impact
+3. **Personalized Assessment**: Based on the user's goals and current intake, clearly state if this food is:
+   - ✅ HIGHLY RECOMMENDED: Aligns perfectly with their goals
+   - ✅ RECOMMENDED: Good choice with minor considerations
+   - ⚠️ MODERATE: Can fit if prepared/portioned correctly
+   - ❌ NOT RECOMMENDED: Conflicts with their health goals
+4. **Practical Guidance**: 
+   - Ideal serving size for this user
+   - Best time to consume (based on circadian context)
+   - Healthier preparation methods
+   - What to pair it with for balanced nutrition
+5. **Alternatives**: If not recommended, suggest 2-3 healthier alternatives that satisfy similar cravings
+
+IMPORTANT: Always consider their remaining calorie/macro budget, active health goals, and BMI status. Be specific with numbers (e.g., "150g serving = 320 kcal"). Keep tone warm and encouraging, not judgmental.
+
 Answer the following question with personalised, actionable advice. Be warm and concise. Reference the user's specific profile or goals where relevant. Keep paragraphs short.
 
 User: $text
 ''';
 
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
       final response = await model.generateContent([
         Content.text(systemPrompt),
       ]);
@@ -1506,20 +1588,32 @@ User: $text
       }
 
       setState(() {
+        _isProcessingText = false;
         _processingMessage = null;
         _messages.add(ChatMessage(text: responseText, isUser: false));
       });
       _scrollToBottom();
     } catch (e) {
+      debugPrint('=== TEXT QUERY ERROR ===');
+      debugPrint('Error: $e');
+
+      String errorMsg = 'Sorry, I had trouble responding right now. ';
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection')) {
+        errorMsg += 'Please check your internet connection and try again. 🌐';
+      } else if (e.toString().contains('PERMISSION_DENIED') ||
+          e.toString().contains('API_KEY_INVALID')) {
+        errorMsg +=
+            'API key issue detected. Please verify your Gemini API key. 🔑';
+      } else {
+        errorMsg += 'Please try again! 😅';
+      }
+
       setState(() {
+        _isProcessingText = false;
         _processingMessage = null;
-        _messages.add(
-          ChatMessage(
-            text:
-                'Sorry, I had trouble responding right now. Please try again! 😅',
-            isUser: false,
-          ),
-        );
+        _messages.add(ChatMessage(text: errorMsg, isUser: false));
       });
       _scrollToBottom();
     }
@@ -1736,7 +1830,7 @@ Provide:
 Keep the tone warm and practical.
 ''';
 
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
       final response = await model.generateContent([Content.text(prompt)]);
 
       setState(() {
@@ -1883,17 +1977,21 @@ Keep the tone warm and practical.
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: _isAnalyzingImage
+                        ? const Icon(Icons.camera_alt, size: 20)
+                        : const CircularProgressIndicator(strokeWidth: 2),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    _processingMessage!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
+                  Flexible(
+                    child: Text(
+                      _processingMessage!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -1930,7 +2028,9 @@ Keep the tone warm and practical.
             children: [
               // Camera Button
               IconButton(
-                onPressed: () => _pickImage(ImageSource.camera),
+                onPressed: _isAnalyzingImage
+                    ? null
+                    : () => _pickImage(ImageSource.camera),
                 icon: const Icon(Icons.camera_alt),
                 tooltip: 'Take Photo',
                 style: IconButton.styleFrom(
@@ -1943,7 +2043,9 @@ Keep the tone warm and practical.
 
               // Gallery Button
               IconButton(
-                onPressed: () => _pickImage(ImageSource.gallery),
+                onPressed: _isAnalyzingImage
+                    ? null
+                    : () => _pickImage(ImageSource.gallery),
                 icon: const Icon(Icons.photo_library),
                 tooltip: 'Upload from Gallery',
                 style: IconButton.styleFrom(

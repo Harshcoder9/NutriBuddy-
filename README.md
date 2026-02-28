@@ -12,6 +12,25 @@
 
 ---
 
+## App Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>AI Chat — Welcome & Weekly Progress</b></td>
+    <td align="center"><b>Food Logging & Daily Tracking</b></td>
+    <td align="center"><b>Health Goals Selection</b></td>
+    <td align="center"><b>Sign-In Screen</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/01_chat_home.png" width="180"/></td>
+    <td><img src="screenshots/02_food_logging.png" width="180"/></td>
+    <td><img src="screenshots/03_health_goals.png" width="180"/></td>
+    <td><img src="screenshots/04_sign_in.png" width="180"/></td>
+  </tr>
+</table>
+
+---
+
 ## AMD Hardware Integration
 
 This is the core AMD differentiator in this submission.

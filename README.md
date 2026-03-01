@@ -53,10 +53,10 @@ final available = await AmdInferenceService.isAvailable();
 // → gracefully falls back to Gemini cloud if unavailable
 ```
 
-| Mode | Backend | Latency | Privacy |
-|---|---|---|---|
+| Mode                | Backend                    | Latency      | Privacy        |
+| ------------------- | -------------------------- | ------------ | -------------- |
 | **AMD GPU Mode** ⚡ | Ollama + ROCm (Mistral 7B) | ~0.5 s local | 100% on-device |
-| Cloud Fallback | Google Gemini 2.5 Flash | ~2–4 s | Cloud |
+| Cloud Fallback      | Google Gemini 2.5 Flash    | ~2–4 s       | Cloud          |
 
 ### Where AMD GPU Acceleration Shows Up
 
@@ -89,40 +89,52 @@ flutter run -d windows --dart-define=GEMINI_API_KEY=your_key
 ## What It Does — Feature Overview
 
 ### 1. Multimodal Food Analysis (Camera + Text)
+
 Snap a photo or type a food name. Gemini Vision / local AMD model returns full nutrition breakdown — calories, protein, carbs, fats, sugar — with a goal-compliance score and personalised recommendations.
 
 ### 2. Multi-Frame Meal Spread Analysis
+
 Capture multiple frames of a buffet, meal prep spread, or multi-dish table. The app sequences through each frame, aggregates nutrition, and generates an overall compliance report. With AMD GPU: zero cloud latency per frame.
 
 ### 3. AI Chat Nutrition Coach
+
 Conversational coach with rolling 5-exchange memory. Routes intents automatically — food questions, recipe healthification, supplement queries, family meals — with no explicit menu navigation required.
 
 ### 4. Recipe Healthify
+
 Paste any recipe → AI returns a healthier version with ingredient substitutions, calorie delta, and macro breakdown.
 
 ### 5. Cheat Meal Credit System
+
 Gamified compliance tracker. The app scores the last 7 days of intake against your goals (0–100 pts), then unlocks a guilt-free cheat meal when you hit 70+. A novel engagement mechanic that drives daily retention.
 
 ### 6. Supplement Stack Optimizer
+
 Browse 30+ supplements across 8 categories (Performance, Vitamins, Minerals, Omega/Fats, Gut Health, Sleep & Recovery, Weight Management). Select your stack → AI returns:
+
 - Optimal daily timing schedule
 - Synergy pairs (e.g. Creatine + Whey)
 - Conflict / over-dosing warnings
 - Missing supplements for your stated goals
 
 ### 7. Smart Grocery Cart
+
 Scan a shopping receipt (photo) or type a list. AI scores each item against your daily goals, flags bad choices, and suggests healthier swaps.
 
 ### 8. Family Nutrition Hub
+
 Add multiple family members with individual calorie/protein targets, allergies, and dietary restrictions. AI generates a unified weekly shopping list that satisfies every member simultaneously — including kid-friendly meal suggestions.
 
 ### 9. Personalised Daily Goals (BMR-based)
+
 Health profile onboarding (age, gender, height, weight) feeds a Mifflin–St Jeor BMR calculation. Daily calorie and macro targets auto-adjust based on which health challenges are active.
 
 ### 10. Mood × Food Logging
+
 After each meal analysis, the app asks how you felt. Mood logs are correlated with food choices over time to surface patterns.
 
 ### 11. Streak & Progress Dashboard
+
 Weekly stats card on the welcome screen: days tracked, estimated fat loss / surplus, calorie deficit trend, and average protein. Drives daily app opens.
 
 ---
@@ -167,15 +179,15 @@ The switch is **fully transparent** — same prompt format, same JSON response s
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Flutter 3.x (Dart) — Android, iOS, Windows, Web |
-| Local AI **(AMD)** | Ollama + ROCm — Mistral 7B on AMD GPU |
-| Cloud AI | Google Gemini 2.5 Flash (vision + text) |
-| Authentication | Firebase Auth — Google Sign-In + Anonymous |
-| Database | Cloud Firestore (real-time sync) |
-| Local Storage | `shared_preferences` |
-| Image Picking | `image_picker` |
+| Layer              | Technology                                      |
+| ------------------ | ----------------------------------------------- |
+| Framework          | Flutter 3.x (Dart) — Android, iOS, Windows, Web |
+| Local AI **(AMD)** | Ollama + ROCm — Mistral 7B on AMD GPU           |
+| Cloud AI           | Google Gemini 2.5 Flash (vision + text)         |
+| Authentication     | Firebase Auth — Google Sign-In + Anonymous      |
+| Database           | Cloud Firestore (real-time sync)                |
+| Local Storage      | `shared_preferences`                            |
+| Image Picking      | `image_picker`                                  |
 
 ---
 
@@ -235,13 +247,13 @@ lib/
 
 ## Innovation Highlights
 
-| What | Why It Matters for AMD |
-|---|---|
-| **AMD GPU local inference** | First nutrition app with on-device LLM path via ROCm — eliminates latency, cloud cost, and privacy concerns |
-| **Multi-frame video-speed scanning** | AMD GPU removes per-frame cloud bottleneck — enabling real-time multi-dish analysis |
-| **Graceful AMD ↔ cloud fallback** | Works on any device; upgrades automatically when AMD hardware is present |
-| **Cheat credit gamification** | Novel compliance mechanic — turns dietary adherence into a points game |
-| **Family-unified shopping list** | Generates one list satisfying multiple members with conflicting dietary needs |
+| What                                 | Why It Matters for AMD                                                                                      |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| **AMD GPU local inference**          | First nutrition app with on-device LLM path via ROCm — eliminates latency, cloud cost, and privacy concerns |
+| **Multi-frame video-speed scanning** | AMD GPU removes per-frame cloud bottleneck — enabling real-time multi-dish analysis                         |
+| **Graceful AMD ↔ cloud fallback**    | Works on any device; upgrades automatically when AMD hardware is present                                    |
+| **Cheat credit gamification**        | Novel compliance mechanic — turns dietary adherence into a points game                                      |
+| **Family-unified shopping list**     | Generates one list satisfying multiple members with conflicting dietary needs                               |
 
 ---
 
@@ -260,6 +272,7 @@ lib/
 3. **Restaurant menu scanning** — point camera at a menu to get goal-ranked dish recommendations
 4. **Social challenges** — compete with friends on streaks and goal hit-rate leaderboards
 5. **Clinician dashboard** — dietitian portal with patient progress views (B2B pivot)
+6. **In-app AI Grocery Cart Analyser extension** — a dedicated browser/store extension that overlays real-time nutrition scores and goal-compliance ratings directly on product listings in grocery delivery apps (Blinkit, Zepto, Amazon Fresh, etc.); powered by local AMD GPU inference so scores appear instantly without cloud round-trips, and synced back to the user's NutriBuddy daily totals seamlessly
 
 ---
 

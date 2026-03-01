@@ -1,4 +1,4 @@
-# NutriBuddy — AI Nutrition Coach powered by AMD GPU
+# NutriBuddy🥗 — AI Nutrition Coach powered by AMD GPU
 
 > **AMD Challenge Submission** | Flutter · Gemini AI · AMD ROCm · Firebase
 
@@ -6,7 +6,7 @@
 
 ## 🎥 Demo
 
-[![NutriBuddy Demo](https://img.youtube.com/vi/LDbSWp8nCPM/maxresdefault.jpg)](https://www.youtube.com/watch?v=LDbSWp8nCPM)
+[![NutriBuddy🥗 Demo](https://img.youtube.com/vi/LDbSWp8nCPM/maxresdefault.jpg)](https://www.youtube.com/watch?v=LDbSWp8nCPM)
 
 ---
 
@@ -22,17 +22,17 @@
 
 <table>
   <tr>
-    <td align="center"><b>AI Chat — Welcome & Weekly Progress</b></td>
+    <td align="center"><b>Sign-In Screen</b></td>
+    <td align="center"><b>Welcome & Weekly Progress of User</b></td>
     <td align="center"><b>Food Logging & Daily Tracking</b></td>
     <td align="center"><b>Health Goals Selection</b></td>
-    <td align="center"><b>Sign-In Screen</b></td>
     <td align="center"><b>Multi-Frame Meal Analysis</b></td>
   </tr>
   <tr>
+    <td><img src="screenshots/04_sign_in.png" width="170"/></td>
     <td><img src="screenshots/01_chat_home.png" width="170"/></td>
     <td><img src="screenshots/02_food_logging.png" width="170"/></td>
     <td><img src="screenshots/03_health_goals.png" width="170"/></td>
-    <td><img src="screenshots/04_sign_in.png" width="170"/></td>
     <td><img src="screenshots/05_multiframe_analysis.png" width="170"/></td>
   </tr>
 </table>

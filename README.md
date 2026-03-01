@@ -20,12 +20,14 @@
     <td align="center"><b>Food Logging & Daily Tracking</b></td>
     <td align="center"><b>Health Goals Selection</b></td>
     <td align="center"><b>Sign-In Screen</b></td>
+    <td align="center"><b>Multi-Frame Meal Analysis</b></td>
   </tr>
   <tr>
-    <td><img src="screenshots/01_chat_home.png" width="180"/></td>
-    <td><img src="screenshots/02_food_logging.png" width="180"/></td>
-    <td><img src="screenshots/03_health_goals.png" width="180"/></td>
-    <td><img src="screenshots/04_sign_in.png" width="180"/></td>
+    <td><img src="screenshots/01_chat_home.png" width="170"/></td>
+    <td><img src="screenshots/02_food_logging.png" width="170"/></td>
+    <td><img src="screenshots/03_health_goals.png" width="170"/></td>
+    <td><img src="screenshots/04_sign_in.png" width="170"/></td>
+    <td><img src="screenshots/05_multiframe_analysis.png" width="170"/></td>
   </tr>
 </table>
 

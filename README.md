@@ -1,6 +1,6 @@
 # NutriBuddy🥗 — AI Nutrition Coach powered by AMD GPU
 
-> **AMD Challenge Submission** | Flutter · Gemini AI · AMD ROCm · Firebase
+Flutter · Gemini AI · AMD ROCm · Firebase
 
 ---
 
@@ -302,4 +302,4 @@ service cloud.firestore {
 
 ## License
 
-Built for the AMD Challenge Hackathon. All rights reserved © 2026.
+Built for the Nakshatra Hackathon. All rights reserved © 2026.

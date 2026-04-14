@@ -14,7 +14,12 @@
 
 **Nutrition blindness is a global health crisis.** Over 2 billion people are either obese or malnourished — yet 90% have no idea what they're actually eating. Existing apps require tedious manual logging, ignore individual health profiles, and run entirely on centralised cloud AI — slow, expensive, and privacy-invasive.
 
-**NutriBuddy solves this** by turning your phone camera into an instant AI nutritionist, with every inference optionally running locally on AMD GPU hardware — zero cloud dependency, full privacy, near-zero latency.
+**NutriBuddy solves this** by turning your phone camera into an instant AI nutritionist, with inference routed intelligently between local AMD GPU (when available) and cloud AI fallback.
+
+## Live Cloud Deployment
+
+- **Hosting (GCP/Firebase):** https://nutribuddy-4e3b7.web.app
+- **Project Console:** https://console.firebase.google.com/project/nutribuddy-4e3b7/overview
 
 ---
 
@@ -209,8 +214,8 @@ The switch is **fully transparent** — same prompt format, same JSON response s
 ### Install & Run
 
 ```bash
-git clone https://github.com/Harshcoder9/AMD-Challenge.git
-cd "AMD-Challenge"
+git clone https://github.com/Harshcoder9/NutriBuddy-.git
+cd "NutriBuddy-"
 flutter pub get
 
 # Standard cloud-AI mode
@@ -220,6 +225,27 @@ flutter run -d windows --dart-define=GEMINI_API_KEY=YOUR_KEY
 flutter run -d windows --dart-define=GEMINI_API_KEY=YOUR_KEY
 # App auto-detects the local backend and shows ⚡ AMD GPU badges
 ```
+
+### Run on Web (Local)
+
+```bash
+flutter run -d chrome --dart-define=GEMINI_API_KEY=YOUR_KEY
+```
+
+### Deploy to Cloud (Firebase Hosting on GCP)
+
+```bash
+# 1) Build web app
+flutter build web --release --dart-define=GEMINI_API_KEY=YOUR_KEY
+
+# 2) Login once
+firebase login
+
+# 3) Deploy
+firebase deploy --only hosting
+```
+
+Hosting is configured in `firebase.json` with `build/web` as the public directory and SPA rewrites to `index.html`.
 
 > **Demo mode:** Omit `GEMINI_API_KEY` to run with fully simulated AI responses — no key or internet required.
 

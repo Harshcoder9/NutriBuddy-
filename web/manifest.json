@@ -1,0 +1,10 @@
+{
+  "name": "NutriBuddy",
+  "short_name": "NutriBuddy",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#1565C0",
+  "description": "AI nutrition coach powered by Flutter and Firebase.",
+  "orientation": "portrait-primary"
+}

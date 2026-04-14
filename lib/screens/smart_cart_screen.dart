@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:async' show unawaited;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -69,7 +69,8 @@ class _SmartCartScreenState extends State<SmartCartScreen>
   List<CartItem> _cartItems = [];
   bool _isAnalyzing = false;
   String? _statusMsg;
-  File? _receiptImage;
+  XFile? _receiptImage;
+  Uint8List? _receiptImageBytes;
 
   // Tab controller: Receipt | Manual | Results
   late final TabController _tabs = TabController(length: 3, vsync: this);
@@ -89,16 +90,18 @@ class _SmartCartScreenState extends State<SmartCartScreen>
       imageQuality: 90,
     );
     if (file == null) return;
+    final imageBytes = await file.readAsBytes();
     setState(() {
-      _receiptImage = File(file.path);
+      _receiptImage = file;
+      _receiptImageBytes = imageBytes;
       _cartItems = [];
       _statusMsg = null;
     });
     _tabs.animateTo(2); // jump to results tab
-    await _analyzeReceiptImage(File(file.path));
+    await _analyzeReceiptImage(file);
   }
 
-  Future<void> _analyzeReceiptImage(File img) async {
+  Future<void> _analyzeReceiptImage(XFile img) async {
     setState(() {
       _isAnalyzing = true;
       _statusMsg = widget.amdBackendAvailable
@@ -479,8 +482,8 @@ Return ONLY valid JSON with the "items" array. No markdown.
           if (_receiptImage != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                _receiptImage!,
+              child: Image.memory(
+                _receiptImageBytes!,
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,

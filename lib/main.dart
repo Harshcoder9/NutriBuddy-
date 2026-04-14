@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -211,7 +211,7 @@ class AuthGate extends StatelessWidget {
 class ChatMessage {
   final String text;
   final bool isUser;
-  final File? image;
+  final Uint8List? imageBytes;
   final Map<String, dynamic>? analysisData;
   final DateTime timestamp;
   // 'mood_prompt' | 'credit_status' | 'recipe_mode' | null
@@ -221,7 +221,7 @@ class ChatMessage {
   ChatMessage({
     required this.text,
     required this.isUser,
-    this.image,
+    this.imageBytes,
     this.analysisData,
     this.messageType,
     this.foodNameForMood,
@@ -261,7 +261,7 @@ class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   final FirestoreService _firestoreService = FirestoreService();
   final List<ChatMessage> _messages = [];
-  File? _selectedImage;
+  XFile? _selectedImage;
   // Separate states for image vs text processing
   bool _isAnalyzingImage = false;
   bool _isProcessingText = false;
@@ -479,8 +479,9 @@ class _HomePageState extends State<HomePage> {
       );
 
       if (image != null) {
+        final imageBytes = await image.readAsBytes();
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImage = image;
           _analysisResult = null;
         });
 
@@ -489,7 +490,7 @@ class _HomePageState extends State<HomePage> {
           ChatMessage(
             text: "Please analyze this food item",
             isUser: true,
-            image: File(image.path),
+            imageBytes: imageBytes,
           ),
         );
 
@@ -2607,11 +2608,11 @@ Keep the tone warm and practical.
           const SizedBox(height: 4),
 
           // Image if present
-          if (message.image != null) ...[
+          if (message.imageBytes != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.file(
-                message.image!,
+              child: Image.memory(
+                message.imageBytes!,
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,

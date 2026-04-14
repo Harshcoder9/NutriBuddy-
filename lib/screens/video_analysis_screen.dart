@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -21,7 +21,7 @@ const _kFrameGeminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
 /// Result for a single analyzed frame.
 class FrameResult {
   final int index;
-  final File frame;
+  final Uint8List frame;
   final Map<String, dynamic>? nutrition; // null = no food / error
   final String? productName;
   final String? errorMessage;
@@ -91,7 +91,7 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen>
   final ImagePicker _picker = ImagePicker();
 
   // ── State ─────────────────────────────────────────────────────────────────
-  List<File> _frames = [];
+  List<Uint8List> _frames = [];
   final List<FrameResult> _results = [];
   int? _analyzingIndex;
   bool _analysisComplete = false;
@@ -123,8 +123,9 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen>
       imageQuality: 80,
     );
     if (images.isNotEmpty) {
+      final frames = await Future.wait(images.map((x) => x.readAsBytes()));
       setState(() {
-        _frames = images.map((x) => File(x.path)).toList();
+        _frames = frames;
         _results.clear();
         _analysisComplete = false;
         _aggregatedResult = null;
@@ -141,8 +142,9 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen>
       imageQuality: 80,
     );
     if (images.isNotEmpty) {
+      final frames = await Future.wait(images.map((x) => x.readAsBytes()));
       setState(() {
-        _frames.addAll(images.map((x) => File(x.path)));
+        _frames.addAll(frames);
       });
     }
   }
@@ -200,7 +202,7 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen>
   }
 
   /// Analyze a single frame using Gemini Vision.
-  Future<FrameResult> _analyzeFrame(File frame, int index) async {
+  Future<FrameResult> _analyzeFrame(Uint8List frame, int index) async {
     final frameStart = DateTime.now();
 
     const prompt = '''
@@ -227,13 +229,12 @@ If food, return ONLY JSON (no other text):
 }
 ''';
 
-    final imageBytes = await frame.readAsBytes();
     final model = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: _kFrameGeminiApiKey,
     );
     final content = [
-      Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+      Content.multi([TextPart(prompt), DataPart('image/jpeg', frame)]),
     ];
 
     final response = await model.generateContent(content);
@@ -706,7 +707,7 @@ If food, return ONLY JSON (no other text):
               // Frame image
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.file(
+                child: Image.memory(
                   _frames[index],
                   fit: BoxFit.cover,
                   color: isCurrentlyAnalyzing
@@ -1094,7 +1095,7 @@ If food, return ONLY JSON (no other text):
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: Image.file(
+              child: Image.memory(
                 res.frame,
                 width: 44,
                 height: 44,

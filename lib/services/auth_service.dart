@@ -20,35 +20,69 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger the Google Sign-In flow
+      if (kIsWeb) {
+        // For web, use Firebase's built-in OAuth flow
+        return await _signInWithGoogleWeb();
+      } else {
+        // For native platforms, use google_sign_in package
+        return await _signInWithGoogleNative();
+      }
+    } catch (e) {
+      debugPrint('Error signing in with Google: $e');
+      rethrow;
+    }
+  }
+
+  // Native platform Google Sign-In
+  Future<UserCredential?> _signInWithGoogleNative() async {
+    try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        // User canceled the sign-in
         return null;
       }
 
-      // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // Create a new credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the Google credential
       final userCredential = await _auth.signInWithCredential(credential);
 
-      // Create user profile in Firestore if it doesn't exist
       if (userCredential.user != null) {
         await _createUserProfileIfNeeded(userCredential.user!);
       }
 
       return userCredential;
     } catch (e) {
-      debugPrint('Error signing in with Google: $e');
+      debugPrint('Error in native Google Sign-In: $e');
+      rethrow;
+    }
+  }
+
+  // Web platform Google Sign-In using Firebase's OAuth
+  Future<UserCredential?> _signInWithGoogleWeb() async {
+    try {
+      final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('profile');
+      googleProvider.addScope('email');
+
+      final userCredential = await _auth.signInWithPopup(googleProvider);
+
+      if (userCredential.user != null) {
+        await _createUserProfileIfNeeded(userCredential.user!);
+      }
+
+      return userCredential;
+    } catch (e) {
+      debugPrint('Error in web Google Sign-In: $e');
+      // Check for specific web errors
+      if (e.toString().contains('popup-blocked')) {
+        throw Exception('Sign-in popup was blocked. Please allow popups.');
+      }
       rethrow;
     }
   }
@@ -73,7 +107,13 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
-      await Future.wait([_auth.signOut(), _googleSignIn.signOut()]);
+      if (kIsWeb) {
+        // Web only needs Firebase sign out
+        await _auth.signOut();
+      } else {
+        // Native platforms need both Firebase and GoogleSignIn sign out
+        await Future.wait([_auth.signOut(), _googleSignIn.signOut()]);
+      }
     } catch (e) {
       debugPrint('Error signing out: $e');
       rethrow;
@@ -108,43 +148,61 @@ class AuthService {
         throw Exception('User is not anonymous');
       }
 
-      // Trigger the Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (kIsWeb) {
+        // Web: use Firebase OAuth
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('profile');
+        googleProvider.addScope('email');
 
-      if (googleUser == null) {
-        return null;
+        final userCredential = await _auth.currentUser!.linkWithPopup(googleProvider);
+
+        if (userCredential.user != null) {
+          await _firestore
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .update({
+                'email': userCredential.user!.email,
+                'displayName': userCredential.user!.displayName,
+                'photoURL': userCredential.user!.photoURL,
+                'isAnonymous': false,
+                'upgradedAt': FieldValue.serverTimestamp(),
+              });
+        }
+
+        return userCredential;
+      } else {
+        // Native: use google_sign_in package
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+        if (googleUser == null) {
+          return null;
+        }
+
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        final userCredential = await _auth.currentUser!.linkWithCredential(credential);
+
+        if (userCredential.user != null) {
+          await _firestore
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .update({
+                'email': userCredential.user!.email,
+                'displayName': userCredential.user!.displayName,
+                'photoURL': userCredential.user!.photoURL,
+                'isAnonymous': false,
+                'upgradedAt': FieldValue.serverTimestamp(),
+              });
+        }
+
+        return userCredential;
       }
-
-      // Obtain the auth details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // Create credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Link the anonymous account with Google credential
-      final userCredential = await _auth.currentUser!.linkWithCredential(
-        credential,
-      );
-
-      // Update user profile
-      if (userCredential.user != null) {
-        await _firestore
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .update({
-              'email': userCredential.user!.email,
-              'displayName': userCredential.user!.displayName,
-              'photoURL': userCredential.user!.photoURL,
-              'isAnonymous': false,
-              'upgradedAt': FieldValue.serverTimestamp(),
-            });
-      }
-
-      return userCredential;
     } catch (e) {
       debugPrint('Error upgrading anonymous account: $e');
       rethrow;

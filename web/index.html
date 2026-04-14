@@ -24,6 +24,37 @@
     </style>
   </head>
   <body>
+    <!-- Firebase Authentication -->
+    <script type="module">
+      import {
+        auth,
+        googleProvider,
+        signInWithGoogle,
+        getCurrentUser,
+        signOutUser,
+      } from './firebase-config.js';
+
+      // Make functions globally available
+      window.firebaseAuth = {
+        signInWithGoogle,
+        getCurrentUser,
+        signOutUser,
+        auth,
+      };
+
+      // Listen to auth state changes
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          console.log('User logged in:', user.email);
+          // Dispatch event that Flutter can listen to
+          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: { user } }));
+        } else {
+          console.log('User logged out');
+          window.dispatchEvent(new CustomEvent('authStateChanged', { detail: { user: null } }));
+        }
+      });
+    </script>
+
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>

@@ -154,7 +154,9 @@ class AuthService {
         googleProvider.addScope('profile');
         googleProvider.addScope('email');
 
-        final userCredential = await _auth.currentUser!.linkWithPopup(googleProvider);
+        final userCredential = await _auth.currentUser!.linkWithPopup(
+          googleProvider,
+        );
 
         if (userCredential.user != null) {
           await _firestore
@@ -186,7 +188,9 @@ class AuthService {
           idToken: googleAuth.idToken,
         );
 
-        final userCredential = await _auth.currentUser!.linkWithCredential(credential);
+        final userCredential = await _auth.currentUser!.linkWithCredential(
+          credential,
+        );
 
         if (userCredential.user != null) {
           await _firestore
@@ -318,5 +322,3 @@ class AuthService {
     }
   }
 }
-
-
